@@ -4,6 +4,7 @@ from sklearn.preprocessing import LabelEncoder
 from core import SoftwareAgent, TickResult
 import joblib
 import os
+import datetime
 
 # ==========================================
 # 1. DOMAIN LAYER
@@ -36,12 +37,16 @@ class BankClassifier:
         self.version = "1.0.0"
 
     def train(self, df):
-        # Priprema podataka
+        # Priprema podataka (Sve kolone ili specifične)
+        # Za demo koristimo age i duration
         X = df[['age', 'duration']]
         y = self.encoder.fit_transform(df['y'])
         self.model.fit(X, y)
+        
+        # Update version on every train
+        self.version = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.is_trained = True
-        print(f"Model v{self.version} treniran.")
+        print(f"--- LEARN: Model treniran. Nova verzija: {self.version} ---")
 
     def predict(self, row_dict):
         if not self.is_trained: return 0.0
@@ -49,92 +54,84 @@ class BankClassifier:
         return self.model.predict_proba(X_single)[0][1]
     
     def save_model(self, filename="bank_model.joblib"):
-        """Saves the brain to disk (Infrastructure logic)"""
-        joblib.dump({"model": self.model, "version": self.version}, filename)
-        print(f"Model spremljen na lokaciju: {filename}")
+        joblib.dump({"model": self.model, "version": self.version, "encoder": self.encoder}, filename)
 
     def load_model(self, filename="bank_model.joblib"):
-        """Loads the brain from disk"""
         if os.path.exists(filename):
             data = joblib.load(filename)
             self.model = data["model"]
             self.version = data["version"]
+            self.encoder = data.get("encoder", LabelEncoder())
             self.is_trained = True
-            print(f"Model v{self.version} uspješno učitan.")
             return True
         return False
 
-# ==========================================
-# 3. APPLICATION LAYER (Runners)
-# Ovdje se spaja Sense -> Think -> Act
-# ==========================================
-
 class ScoringAgentRunner(SoftwareAgent):
-    def __init__(self, csv_path):
-        # SENSE: Inicijalizacija izvora podataka
+    def __init__(self, csv_path, classifier):
         self.dataset = pd.read_csv(csv_path, sep=',')
         self.current_row = 0
-        
-        # Servisi
-        self.classifier = BankClassifier()
-        if not self.classifier.load_model():
-            print("Nema spremljenog modela. Treniram novi...")
-            self.classifier.train(self.dataset.head(500))
-            self.classifier.save_model() # Odmah spremi početno znanje
-        
-        # Postavke (Infrastruktura/Domain)
+        self.classifier = classifier
         self.threshold = 0.6
 
     def step(self):
-        """Jedan Tick/Step agenta (Pravilo #1)"""
-        
-        # --- SENSE ---
-        # Uzmi stanje svijeta (jedan red iz CSV/DB)
         if self.current_row >= len(self.dataset):
-            return None # Pravilo #3: No-work izlaz
+            return None 
 
         row = self.dataset.iloc[self.current_row]
         row_dict = row.to_dict()
         current_id = self.current_row
         self.current_row += 1
 
-        # --- THINK ---
-        # 1. Izračunaj vjerovatnoću (ML)
+        # THINK
         p_yes = self.classifier.predict(row_dict)
-        # 2. Donesi domensku odluku (Domain Rules)
         decision = BankRules.decide(p_yes, self.threshold)
 
-        # --- ACT ---
-        # Vrati standardizovani rezultat (Pravilo #6)
-        # U realnom sistemu ovdje bi išao i self.db.save(...)
+        # ACT
         return TickResult(
             item_id=int(current_id),
             probability=float(round(p_yes, 4)),
             decision=decision,
-            status="Processed"
+            status=f"Processed (Model v{self.classifier.version})"
         )
 
 class RetrainAgentRunner(SoftwareAgent):
     """
-    Dodatni agent za 'LEARN' dio (Pravilo #8b)
+    IMPLEMENTACIJA LEARN DIJELA
     """
-    def __init__(self, classifier, main_dataset):
+    def __init__(self, classifier, csv_path):
         self.classifier = classifier
-        self.dataset = main_dataset
-        self.new_gold_labels = 0
-        self.retrain_threshold = 50 # Svakih 50 novih labela
+        self.csv_path = csv_path
+        self.processed_since_last_train = 0
+        self.retrain_interval = 20 # Svakih 20 predviđanja radimo "re-learning"
+
+    def increment_counter(self):
+        self.processed_since_last_train += 1
 
     def step(self):
-        # SENSE: Provjeri brojače ili postavke
-        should_retrain = self.new_gold_labels >= self.retrain_threshold
+        # --- SENSE ---
+        # Provjeri da li je ispunjen uslov za učenje (npr. skupili smo dovoljno novih podataka)
+        if self.processed_since_last_train < self.retrain_interval:
+            return None # Nema posla (Pravilo #3)
+
+        # --- THINK ---
+        print(f"RetrainAgent: Detektovano {self.processed_since_last_train} novih stavki. Pokrećem učenje...")
+
+        # --- ACT / LEARN ---
+        # U realnosti bi ovdje učitavali samo NOVE podatke iz baze
+        full_df = pd.read_csv(self.csv_path, sep=',')
         
-        # THINK: Da li je potrebno učenje?
-        if not should_retrain:
-            return None
-            
-        # ACT/LEARN: Pokreni trening
-        print("RetrainAgent: Pokrećem učenje novog modela...")
-        self.classifier.train(self.dataset.sample(600))
-        self.new_gold_labels = 0
+        # Simuliramo učenje na "svježim" podacima (uzimamo nasumični uzorak kao nove gold labele)
+        fresh_data = full_df.sample(n=1000) 
         
-        return TickResult(0, 0, "Model Retrained", "Success")
+        self.classifier.train(fresh_data)
+        self.classifier.save_model()
+        
+        # Resetujemo stanje agenta
+        self.processed_since_last_train = 0
+        
+        return TickResult(
+            item_id=0,
+            probability=1.0,
+            decision="MODEL_UPDATED",
+            status=f"New version: {self.classifier.version}"
+        )

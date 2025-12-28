@@ -1,49 +1,53 @@
 import threading
 import time
 from flask import Flask, jsonify
-from shared import ScoringAgentRunner
+from shared import ScoringAgentRunner, RetrainAgentRunner, BankClassifier
 
 app = Flask(__name__)
 
-# --- CONFIGURATION & INIT ---
-# Host (Web) odlučuje o putanji do podataka i inicijalizaciji
 CSV_PATH = "bank-full.csv"
-scoring_agent = ScoringAgentRunner(CSV_PATH)
 
-# Thread-safe memorija za rezultate (Simulacija baze podataka u memoriji)
+# Shared Brain
+shared_classifier = BankClassifier()
+if not shared_classifier.load_model():
+    # Inicijalno učenje ako nema modela
+    import pandas as pd
+    initial_df = pd.read_csv(CSV_PATH, sep=';').head(1000)
+    shared_classifier.train(initial_df)
+    shared_classifier.save_model()
+
+# Instanciranje oba agenta
+scoring_agent = ScoringAgentRunner(CSV_PATH, shared_classifier)
+retrain_agent = RetrainAgentRunner(shared_classifier, CSV_PATH)
+
 processed_results = []
 results_lock = threading.Lock()
 
 def agent_worker_loop():
-    """
-    Background scheduling (Pravilo #4 i #8).
-    Host upravlja 'živahnošću' agenta.
-    """
-    print("Agent Background Worker pokrenut...")
-    
     while True:
         try:
-            # SENSE/THINK/ACT se dešava unutar Shared sloja (Step)
-            # Web layer ne zna ŠTA agent radi, samo dobija rezultat
+            # 1. SCORING STEP
             result = scoring_agent.step()
             
             if result:
-                # Rule #6: Rezultat je standardizovan DTO (TickResult)
                 with results_lock:
                     processed_results.append(result.to_dict())
                 
-                print(f"Tick Izvršen: ID {result.item_id} | Odluka: {result.decision}")
+                # Javi Retrain agentu da je obrađen jedan podatak (Sense update za Retrain)
+                retrain_agent.increment_counter()
                 
-                # Rule #4: Host kontroliše brzinu (1 sekunda pauze)
-                time.sleep(1) 
+                # 2. RETRAIN STEP (Provjera da li treba učiti)
+                learn_result = retrain_agent.step()
+                if learn_result:
+                    print(f"!!! AGENT JE NAUČIO NEŠTO NOVO: {learn_result.status} !!!")
+
+                time.sleep(0.5) 
             else:
-                # Rule #3: No-work izlaz (nema više poruka/redova)
-                print("Nema više podataka. Agent prelazi u stanje mirovanja...")
-                time.sleep(10)
+                time.sleep(5)
                 
         except Exception as e:
-            print(f"Kritična greška u radu agenta: {e}")
-            time.sleep(5)
+            print(f"Greška: {e}")
+            time.sleep(2)
 
 # --- WEB API (Host Layer) ---
 
@@ -75,12 +79,6 @@ def get_stats():
         })
 
 if __name__ == "__main__":
-    # 1. Pokretanje agenta u pozadini (Worker)
-    # Daemon=True osigurava da se thread gasi kada se ugasi glavni program
     worker = threading.Thread(target=agent_worker_loop, daemon=True)
     worker.start()
-
-    # 2. Pokretanje Flask servera (Transport/Host)
-    # Isključujemo debug=True jer Flask debug mode pokreće threadove duplo
-    print("Pokrećem Web Server na http://localhost:5000")
     app.run(host='0.0.0.0', port=5000, debug=False)
