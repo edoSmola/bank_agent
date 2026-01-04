@@ -1,20 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bank Agent Control</title>
+    <title>Bank Agent - Manual Predict</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <h1>Bank Agent Controller</h1>
     
-    <div class="status-box">
-        <button id="startBtn" class="btn start">START AGENT</button>
-        <button id="stopBtn" class="btn stop">STOP AGENT</button>
-    </div>
+    <div class="container">
+        <div class="panel">
+            <div class="status-box">
+                <h3>Batch Agent Control</h3>
+                <button id="startBtn" class="btn start">START BATCH</button>
+                <button id="stopBtn" class="btn stop">STOP BATCH</button>
+                <div id="agentStatus">Status: Idle</div>
+            </div>
 
-    <div id="stats">Total Processed: 0</div>
-    <h3>Agent Activity Log:</h3>
-    <div id="log"></div>
+            <div class="input-box">
+                <h3>Manual Percept Input</h3>
+                <div class="form-group">
+                    <label>Age:</label>
+                    <input type="number" id="ageInput" value="30">
+                </div>
+                <div class="form-group">
+                    <label>Duration (sec):</label>
+                    <input type="number" id="durationInput" value="150">
+                </div>
+                <button id="predictBtn" class="btn manual">GET AGENT DECISION</button>
+                
+                <div id="manualResult" class="result-display">
+                    Submit data to see prediction...
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div id="stats">Total Processed: 0</div>
+            <h3>Activity Log:</h3>
+            <div id="log"></div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

@@ -2,7 +2,7 @@ import threading
 import time
 import os
 import pandas as pd
-from flask import Flask, jsonify, render_template, send_from_directory
+from flask import Flask, jsonify, render_template, send_from_directory, request
 from shared import ScoringAgentRunner, RetrainAgentRunner, BankClassifier
 
 # --- FLASK CONFIGURATION (Flat Folder Mode) ---
@@ -102,6 +102,28 @@ def get_results():
             "total_processed": len(processed_results),
             "recent_actions": processed_results[-15:] # Send last 15 for the UI log
         })
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    try:
+        # Get data from frontend JSON
+        user_data = request.json 
+        
+        # Validate minimal input (expecting 'age' and 'duration')
+        if not user_data or 'age' not in user_data or 'duration' not in user_data:
+            return jsonify({"error": "Missing age or duration"}), 400
+
+        # Delegate to Agent (The 'Brain')
+        result = scoring_agent.predict_single(user_data)
+        
+        # Optionally log this to our history
+        with results_lock:
+            processed_results.append(result.to_dict())
+
+        return jsonify(result.to_dict())
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/health')
 def health():

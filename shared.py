@@ -93,6 +93,19 @@ class ScoringAgentRunner(SoftwareAgent):
             decision=decision,
             status=f"Processed (Model v{self.classifier.version})"
         )
+    
+    def predict_single(self, data_dict):
+        # THINK
+        p_yes = self.classifier.predict(data_dict)
+        decision = BankRules.decide(p_yes, self.threshold)
+
+        # ACT (Return result for the Web layer to display)
+        return TickResult(
+            item_id="MANUAL_INPUT",
+            probability=float(round(p_yes, 4)),
+            decision=decision,
+            status=f"Predicted via Web (Model v{self.classifier.version})"
+        )
 
 class RetrainAgentRunner(SoftwareAgent):
     """
