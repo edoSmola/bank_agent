@@ -74,6 +74,7 @@ class ScoringAgentRunner(SoftwareAgent):
         self.threshold = 0.6
 
     def step(self):
+        #SENSE
         if self.current_row >= len(self.dataset):
             return None 
 
