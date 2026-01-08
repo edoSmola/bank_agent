@@ -1,6 +1,8 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, OrdinalEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from core import SoftwareAgent, TickResult
 import joblib
 import os
@@ -31,17 +33,42 @@ class BankRules:
 
 class BankClassifier:
     def __init__(self):
-        self.model = RandomForestClassifier(n_estimators=100)
+        # The sklearn Pipeline will hold the preprocessor + classifier
+        self.pipeline = None
         self.encoder = LabelEncoder()
         self.is_trained = False
         self.version = "1.0.0"
 
     def train(self, df):
         # Priprema podataka (Sve kolone ili specifične)
-        # Za demo koristimo age i duration
-        X = df[['age', 'duration']]
+        # Koristimo traženi skup kolona (age + kategorijske)
+        feature_keys = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan']
+        # education handled with OrdinalEncoder; other categoricals get one-hot
+        cat_cols = ['job', 'marital', 'default', 'housing', 'loan']
+        edu_order = [
+            'illiterate', 'basic.4y', 'basic.6y', 'basic.9y',
+            'high.school', 'professional.course', 'university.degree'
+        ]
+
+        X = df[feature_keys].copy()
         y = self.encoder.fit_transform(df['y'])
-        self.model.fit(X, y)
+
+        # Preprocessor: Ordinal for `education` (unknown -> -1), OneHot for other categoricals, passthrough numeric
+        edu_encoder = OrdinalEncoder(categories=[edu_order], handle_unknown='use_encoded_value', unknown_value=-1)
+
+        preprocessor = ColumnTransformer([
+            ('edu', edu_encoder, ['education']),
+            ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False), cat_cols)
+        ], remainder='passthrough')
+
+        # Build pipeline (preprocessor + classifier)
+        self.pipeline = Pipeline([
+            ('pre', preprocessor),
+            ('clf', RandomForestClassifier(n_estimators=100))
+        ])
+
+        # Fit pipeline
+        self.pipeline.fit(X, y)
         
         # Update version on every train
         self.version = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -50,16 +77,22 @@ class BankClassifier:
 
     def predict(self, row_dict):
         if not self.is_trained: return 0.0
-        X_single = pd.DataFrame([row_dict])[['age', 'duration']]
-        return self.model.predict_proba(X_single)[0][1]
+        # Build single-row DataFrame with expected input columns
+        feature_keys = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan']
+        row = {k: row_dict.get(k, None) for k in feature_keys}
+        X_single_df = pd.DataFrame([row])
+
+        # Delegate preprocessing + prediction to the pipeline
+        proba = self.pipeline.predict_proba(X_single_df)[0][1]
+        return proba
     
     def save_model(self, filename="bank_model.joblib"):
-        joblib.dump({"model": self.model, "version": self.version, "encoder": self.encoder}, filename)
+        joblib.dump({"pipeline": self.pipeline, "version": self.version, "encoder": self.encoder}, filename)
 
     def load_model(self, filename="bank_model.joblib"):
         if os.path.exists(filename):
             data = joblib.load(filename)
-            self.model = data["model"]
+            self.pipeline = data.get("pipeline")
             self.version = data["version"]
             self.encoder = data.get("encoder", LabelEncoder())
             self.is_trained = True

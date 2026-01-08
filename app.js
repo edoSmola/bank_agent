@@ -11,7 +11,12 @@ document.getElementById('stopBtn').addEventListener('click', () => {
 document.getElementById('predictBtn').addEventListener('click', async () => {
     const data = {
         age: parseInt(document.getElementById('ageInput').value),
-        duration: parseInt(document.getElementById('durationInput').value)
+        job: document.getElementById('jobInput').value,
+        marital: document.getElementById('maritalInput').value,
+        education: document.getElementById('educationInput').value,
+        default: document.getElementById('defaultInput').value,
+        housing: document.getElementById('housingInput').value,
+        loan: document.getElementById('loanInput').value
     };
 
     const display = document.getElementById('manualResult');

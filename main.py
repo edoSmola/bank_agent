@@ -22,8 +22,8 @@ shared_classifier = BankClassifier()
 if not shared_classifier.load_model():
     print("--- Initializing: No model found. Training first version... ---")
     try:
-        # Note: Bank dataset usually uses ';' separator
-        initial_df = pd.read_csv(CSV_PATH, sep=';').head(1000)
+        # Read dataset (file uses comma separator)
+        initial_df = pd.read_csv(CSV_PATH, sep=',').head(1000)
         shared_classifier.train(initial_df)
         shared_classifier.save_model()
     except Exception as e:
@@ -109,9 +109,10 @@ def predict():
         # Get data from frontend JSON
         user_data = request.json 
         
-        # Validate minimal input (expecting 'age' and 'duration')
-        if not user_data or 'age' not in user_data or 'duration' not in user_data:
-            return jsonify({"error": "Missing age or duration"}), 400
+        # Validate minimal input (expecting the feature set used by the model)
+        required = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan']
+        if not user_data or any(k not in user_data for k in required):
+            return jsonify({"error": f"Missing required fields. Required: {required}"}), 400
 
         # Delegate to Agent (The 'Brain')
         result = scoring_agent.predict_single(user_data)

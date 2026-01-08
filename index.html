@@ -23,8 +23,63 @@
                     <input type="number" id="ageInput" value="30">
                 </div>
                 <div class="form-group">
-                    <label>Duration (sec):</label>
-                    <input type="number" id="durationInput" value="150">
+                    <label>Job:</label>
+                    <select id="jobInput">
+                        <option value="admin.">admin.</option>
+                        <option value="blue-collar">blue-collar</option>
+                        <option value="entrepreneur">entrepreneur</option>
+                        <option value="housemaid">housemaid</option>
+                        <option value="management">management</option>
+                        <option value="retired">retired</option>
+                        <option value="self-employed">self-employed</option>
+                        <option value="services">services</option>
+                        <option value="student">student</option>
+                        <option value="technician">technician</option>
+                        <option value="unemployed">unemployed</option>
+                        <option value="unknown">unknown</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Marital:</label>
+                    <select id="maritalInput">
+                        <option value="married">married</option>
+                        <option value="single">single</option>
+                        <option value="divorced">divorced</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Education:</label>
+                    <select id="educationInput">
+                        <option value="basic.4y">basic.4y</option>
+                        <option value="basic.6y">basic.6y</option>
+                        <option value="basic.9y">basic.9y</option>
+                        <option value="high.school">high.school</option>
+                        <option value="professional.course">professional.course</option>
+                        <option value="university.degree">university.degree</option>
+                        <option value="unknown">unknown</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Default:</label>
+                    <select id="defaultInput">
+                        <option value="no">no</option>
+                        <option value="yes">yes</option>
+                        <option value="unknown">unknown</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Housing loan:</label>
+                    <select id="housingInput">
+                        <option value="no">no</option>
+                        <option value="yes">yes</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Personal loan:</label>
+                    <select id="loanInput">
+                        <option value="no">no</option>
+                        <option value="yes">yes</option>
+                    </select>
                 </div>
                 <button id="predictBtn" class="btn manual">GET AGENT DECISION</button>
                 
