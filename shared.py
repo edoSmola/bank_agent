@@ -94,11 +94,15 @@ class BankClassifier:
             # Fallback to last column (convention: positive class)
             return float(probas[0][-1])
 
-    def save_model(self, filename="bank_model.joblib"):
+    def save_model(self, filename="data/bank_model.joblib"):
         with self._lock:
+            # ensure target directory exists
+            dirpath = os.path.dirname(filename)
+            if dirpath:
+                os.makedirs(dirpath, exist_ok=True)
             joblib.dump({"pipeline": self.pipeline, "version": self.version, "encoder": self.encoder}, filename)
 
-    def load_model(self, filename="bank_model.joblib"):
+    def load_model(self, filename="data/bank_model.joblib"):
         if os.path.exists(filename):
             with self._lock:
                 data = joblib.load(filename)

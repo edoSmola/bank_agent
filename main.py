@@ -10,10 +10,11 @@ from agents import QueueService, ScoringService, TrainingService, ScoringAgentRu
 
 # --- FLASK CONFIGURATION (Flat Folder Mode) ---
 # template_folder='.' allows index.html to be in the same directory
-app = Flask(__name__, template_folder='.', static_folder='.')
+app = Flask(__name__, template_folder='web', static_folder='web')
 
 # --- AGENT STATE & SHARED DATA ---
-CSV_PATH = "bank-full.csv"
+# CSV location moved into `data/` directory
+CSV_PATH = "data/bank-full.csv"
 is_running = False
 processed_results = deque(maxlen=30)
 results_lock = threading.Lock()
@@ -32,7 +33,7 @@ if not shared_classifier.load_model():
         # Persist the initial training rows as labeled experiences so the
         # agent does not re-process them at runtime. Keep only the feature
         # columns used by the classifier plus the target `y`.
-        experiences_path = 'experiences.csv'
+        experiences_path = 'data/experiences.csv'
         feature_keys = ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan']
         cols_to_write = [c for c in feature_keys + ['y'] if c in initial_df.columns]
 
@@ -66,7 +67,7 @@ if not shared_classifier.load_model():
 
         # Advance queue state so the initial rows are skipped during processing
         # by setting next_index to at least the number of initial rows used for training.
-        state_path = 'queue_state.json'
+        state_path = 'data/queue_state.json'
         desired_next = len(initial_df)
         try:
             if os.path.exists(state_path):
@@ -152,7 +153,7 @@ def index():
 @app.route('/<path:filename>')
 def serve_static(filename):
     """Serves CSS and JS files from the same folder."""
-    return send_from_directory('.', filename)
+    return send_from_directory('web', filename)
 
 @app.route('/start')
 def start_agent():

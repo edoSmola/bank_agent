@@ -46,7 +46,6 @@ function updateUI() {
     fetch('/results')
         .then(response => response.json())
         .then(data => {
-            document.getElementById('stats').innerText = "Total Processed: " + data.total_processed;
             const log = document.getElementById('log');
             log.innerHTML = data.recent_actions.reverse().map(a => 
                 `<div class="log-entry">

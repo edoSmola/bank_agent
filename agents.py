@@ -72,7 +72,7 @@ class SystemSettings:
 
 class QueueService:
     """Lightweight queue backed by CSV and a small state file for idempotency."""
-    def __init__(self, csv_path, state_path='queue_state.json'):
+    def __init__(self, csv_path, state_path='data/queue_state.json'):
         self.csv_path = csv_path
         self.state_path = state_path
         self.dataset = pd.read_csv(csv_path, sep=',')
@@ -102,7 +102,7 @@ class QueueService:
 
 
 class ScoringService:
-    def __init__(self, classifier: BankClassifier, queue_service: QueueService, predictions_path='predictions.json', settings: SystemSettings = None):
+    def __init__(self, classifier: BankClassifier, queue_service: QueueService, predictions_path='data/predictions.json', settings: SystemSettings = None):
         self.classifier = classifier
         self.queue = queue_service
         self.predictions_path = predictions_path
@@ -135,7 +135,7 @@ class ReviewService:
     Experiences are appended to a CSV with the same feature columns
     plus the target `y`. TrainingService will consume these.
     """
-    def __init__(self, experiences_path='experiences.csv', feature_keys=None):
+    def __init__(self, experiences_path='data/experiences.csv', feature_keys=None):
         self.experiences_path = experiences_path
         self.feature_keys = feature_keys or ['age', 'job', 'marital', 'education', 'default', 'housing', 'loan']
         # ensure file exists with header
@@ -161,13 +161,13 @@ class ReviewService:
 
 class TrainingService:
     """Non-blocking training service. Starts training jobs in background threads and tracks versions."""
-    def __init__(self, classifier: BankClassifier, csv_path, models_state='models.json', models_dir='models'):
+    def __init__(self, classifier: BankClassifier, csv_path, models_state='data/models.json', models_dir='data/models'):
         self.classifier = classifier
         self.csv_path = csv_path
         self.jobs = {}  # job_id -> status
         self.models_state = models_state
         self.models_dir = models_dir
-        self.experiences_path = 'experiences.csv'
+        self.experiences_path = 'data/experiences.csv'
         os.makedirs(self.models_dir, exist_ok=True)
         if os.path.exists(self.models_state):
             with open(self.models_state, 'r', encoding='utf-8') as f:
