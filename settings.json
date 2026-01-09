@@ -1,0 +1,4 @@
+{
+    "retrain_interval": 20,
+    "threshold": 0.6
+}
